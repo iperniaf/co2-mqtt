@@ -1,0 +1,4 @@
+paho-mqtt
+python-dotenv
+pytz
+mh-z19
