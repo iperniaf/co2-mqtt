@@ -1,107 +1,108 @@
-import sys
-import time
 import os
+import time
 import json
-import urllib
-import urllib.request
 import threading
 import statistics
 import datetime
 import mh_z19
 import pytz
-import paho.mqtt.client as paho
-import argparse
+import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
 
-# subclass JSONEncoder
-class customJsonEncoder(json.JSONEncoder):
-        def default(self, o):
-            if isinstance(o, datetime.datetime):
-                return dict(year=o.year, month=o.month, day=o.day, hour=o.hour, minute=o.minute, second=o.second )            
-            else:
-                return o.__dict__
-            
-class control():
-    #Variables array para las lecturas sucesivas           
-    co2s = []
-    temperatures = []
-    co2LastValue = 0
 
-    #Process data from sensor
-    def readFromSensors(self):
-        #Co2 Readings
+class Config:
+    """Configuration class for MQTT settings."""
+    def __init__(self):
+        self.mqtt_server_ip = os.getenv('MQTT_SERVER_IP')
+        self.mqtt_server_port = int(os.getenv('MQTT_SERVER_PORT'))
+        self.mqtt_server_user = os.getenv('MQTT_SERVER_USER')
+        self.mqtt_server_password = os.getenv('MQTT_SERVER_PASSWORD')
+        self.mqtt_server_topic = os.getenv('MQTT_SERVER_TOPIC')
+
+
+class Control:
+    """Handles sensor data collection and storage."""
+    def __init__(self):
+        self.co2s = []
+        self.co2_last_value = 0
+
+    def read_from_sensors(self):
+        """Read data from sensors."""
         co2 = 0
-        
+
         data = mh_z19.read_all(serial_console_untouched=True)
         if data is None or isinstance(data, int):
-            co2 = self.co2LastValue
+            co2 = self.co2_last_value
         else:
             co2 = data['co2']
-            self.co2LastValue = co2
+            self.co2_last_value = co2
 
         self.co2s.append(int(co2))
 
-class co2reader():
-    mqttServerIp = os.getenv('MQTT_SERVER_IP')
-    mqttServerPort = int(os.getenv('MQTT_SERVER_PORT'))
-    mqttServerUser = os.getenv('MQTT_SERVER_USER')
-    mqttServerPassword = os.getenv('MQTT_SERVER_PASSWORD')
-    mqttServerTopic = os.getenv('MQTT_SERVER_TOPIC')
 
+class CO2Reader:
+    """Main class for CO2 reading and MQTT publishing."""
     def __init__(self):
-        self.c = control()
-        x = threading.Thread(target=co2reader.sample, args=(self.c,), daemon=True)
-        x.start()
-      
-    def sample(c):
+        self.config = Config()
+        self.control = Control()
+        self.client = None
+        self._setup_mqtt()
+        self._start_sensor_thread()
+
+    def _setup_mqtt(self):
+        """Setup MQTT client."""
+        self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+        # self.client.tls_set(tls_version=mqtt.client.ssl.PROTOCOL_TLS)
+        self.client.username_pw_set(self.config.mqtt_server_user, self.config.mqtt_server_password)
+        self.client.connect(self.config.mqtt_server_ip, self.config.mqtt_server_port)
+        self.client.loop_start()
+
+    def _start_sensor_thread(self):
+        """Start the sensor reading thread."""
+        thread = threading.Thread(target=self._sample, daemon=True)
+        thread.start()
+
+    def _sample(self):
+        """Sample sensor data in a loop."""
         print('Main thread running')
         while True:
-            c.readFromSensors()
-            #Timer for readings
+            self.control.read_from_sensors()
             time.sleep(30)
 
-    #Process samples and clear 
-    def processSampes(self):
-        co2ToSend = self.smoothData(self.c.co2s) if any(self.c.co2s) else 0
+    def process_samples(self):
+        """Process samples and clear lists."""
+        co2_to_send = self._smooth_data(self.control.co2s) if any(self.control.co2s) else 0
 
-        jsonToSend = [{'fields': {
-            'co2': int(co2ToSend),
-            'timestamp': datetime.datetime.now().astimezone(pytz.utc).strftime("%d/%m/%Y, %H:%M:%S")
-        }}]
+        json_to_send = [{
+            'fields': {
+                'co2': int(co2_to_send),
+                'timestamp': datetime.datetime.now().astimezone(pytz.utc).strftime("%d/%m/%Y, %H:%M:%S")
+            }
+        }]
 
-        #Initalize lists sent
-        self.c.co2s.clear()
+        self.control.co2s.clear()
+        return json_to_send
 
-        return jsonToSend
-
-    #Smoth results
-    def smoothData(self, x):
+    def _smooth_data(self, x):
+        """Smooth results using median."""
         return statistics.median(list(filter(lambda num: num != 0, x)))
 
-# Start the server to answer requests for readings
-co2reader = co2reader()
+    def run(self):
+        """Main run loop for publishing MQTT messages."""
+        while True:
+            time.sleep(60)
+            measurements = self.process_samples()
+            message_json = json.dumps(measurements[0]['fields'])
+            self.client.publish(self.config.mqtt_server_topic, payload=message_json, qos=1)
+            print(f'Published message: {message_json} Topic: {self.config.mqtt_server_topic}')
+            time.sleep(60)
 
-#MQTT Param prepare        
-co2reader.client = paho.Client(paho.CallbackAPIVersion.VERSION2)
-#self.client.tls_set(tls_version=paho.client.ssl.PROTOCOL_TLS)
-co2reader.client.username_pw_set(co2reader.mqttServerUser, co2reader.mqttServerPassword)
-co2reader.client.connect(co2reader.mqttServerIp, co2reader.mqttServerPort)
-co2reader.client.loop_start()
-#*******************End of MQTT Config
 
-while True:
-    #MQTT Readings every 2 minutes
-    time.sleep(60)
-
-    measurements = co2reader.processSampes()        
-
-    messageJson = json.dumps(measurements[0]['fields'])
-    co2reader.client.publish(co2reader.mqttServerTopic, payload=messageJson, qos=1)
-
-    print('Published message: ' +  messageJson + ' Topic ' +  co2reader.mqttServerTopic)    
-
-    time.sleep(60)
+# Start the application
+if __name__ == "__main__":
+    reader = CO2Reader()
+    reader.run()
     
