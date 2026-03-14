@@ -33,13 +33,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install ruff
+          pip install pytest ruff
 
       - name: Syntax check
         run: python -m py_compile co2-mqtt.py mh_z19.py
 
       - name: Lint (critical only)
         run: ruff check . --select E9,F63,F7,F82
+
+      - name: Run tests
+        run: pytest -q
 
   release-please:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
