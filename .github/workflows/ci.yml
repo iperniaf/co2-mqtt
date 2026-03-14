@@ -33,7 +33,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest ruff
+          pip install pytest pytest-cov ruff
 
       - name: Syntax check
         run: python -m py_compile co2-mqtt.py mh_z19.py
@@ -42,7 +42,15 @@ jobs:
         run: ruff check . --select E9,F63,F7,F82
 
       - name: Run tests
-        run: pytest -q
+        run: pytest -q --cov --cov-report=term-missing --cov-report=xml
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          if-no-files-found: warn
 
   release-please:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
