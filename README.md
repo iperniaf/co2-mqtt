@@ -1,89 +1,89 @@
 # CO2 MQTT Publisher
 
-Este proyecto es un script en Python que lee datos de concentración de CO2 de un sensor MH-Z19 y los publica en un broker MQTT. Está diseñado para integrarse con sistemas de domótica como Home Assistant.
+This project is a Python script that reads CO2 concentration data from an MH-Z19 sensor and publishes it to an MQTT broker. It is designed to integrate with home automation platforms such as Home Assistant.
 
-## Características
+## Features
 
-- Lectura continua de CO2 desde el sensor MH-Z19.
-- Publicación de datos promediados en MQTT cada 2 minutos.
-- Configuración segura mediante variables de entorno (.env).
-- Manejo de errores básicos para lecturas fallidas.
+- Continuous CO2 readings from the MH-Z19 sensor.
+- Median CO2 value published to MQTT every 2 minutes.
+- Secure configuration through environment variables (`.env`).
+- Basic error handling for failed sensor reads.
 
-## Requisitos
+## Requirements
 
-- **Python**: Versión 3.6 o superior.
-- **Hardware**: Sensor MH-Z19 conectado al sistema (generalmente via USB/serial).
-- **Broker MQTT**: Un servidor MQTT accesible (ej. Mosquitto).
-- **Dependencias**: Ver `requirements.txt` para la lista completa.
+- **Python**: Version 3.6 or higher.
+- **Hardware**: MH-Z19 sensor connected to the system (typically via USB/serial).
+- **MQTT Broker**: An accessible MQTT server (for example, Mosquitto).
+- **Dependencies**: See `requirements.txt` for the complete list.
 
-## Instalación
+## Installation
 
-1. Clona este repositorio:
+1. Clone this repository:
    ```bash
-   git clone https://github.com/tu-usuario/co2-mqtt.git
+   git clone https://github.com/your-username/co2-mqtt.git
    cd co2-mqtt
    ```
 
-2. Instala las dependencias:
+2. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
-3. Configura el entorno:
-   - Copia el archivo de ejemplo: `cp .env.example .env`
-   - Edita `.env` con tus valores reales (ver sección de Configuración).
+3. Configure the environment:
+   - Copy the example file: `cp .env.example .env`
+   - Edit `.env` with your real values (see the Configuration section).
 
-## Configuración
+## Configuration
 
-El script utiliza un archivo `.env` para las configuraciones sensibles. Las variables requeridas son:
+The script uses a `.env` file for sensitive settings. Required variables:
 
-- `MQTT_SERVER_IP`: Dirección IP del broker MQTT.
-- `MQTT_SERVER_PORT`: Puerto del broker MQTT (por defecto 1883).
-- `MQTT_SERVER_USER`: Usuario para autenticación MQTT.
-- `MQTT_SERVER_PASSWORD`: Contraseña para autenticación MQTT.
-- `MQTT_SERVER_TOPIC`: Tópico MQTT donde publicar los datos (ej. `homeassistant/co2`).
+- `MQTT_SERVER_IP`: MQTT broker IP address.
+- `MQTT_SERVER_PORT`: MQTT broker port (default: 1883).
+- `MQTT_SERVER_USER`: MQTT username.
+- `MQTT_SERVER_PASSWORD`: MQTT password.
+- `MQTT_SERVER_TOPIC`: MQTT topic used for publishing data (for example, `homeassistant/co2`).
 
-Ejemplo de `.env`:
+Example `.env`:
 ```
 MQTT_SERVER_IP=192.168.1.100
 MQTT_SERVER_PORT=1883
-MQTT_SERVER_USER=tu_usuario
-MQTT_SERVER_PASSWORD=tu_contraseña
+MQTT_SERVER_USER=your_user
+MQTT_SERVER_PASSWORD=your_password
 MQTT_SERVER_TOPIC=homeassistant/sensor/co2
 ```
 
-**Nota de seguridad**: Nunca subas el archivo `.env` real al repositorio. Usa `.env.example` como plantilla.
+**Security note**: Never commit your real `.env` file to the repository. Use `.env.example` as a template.
 
-## Uso
+## Usage
 
-Ejecuta el script principal:
+Run the main script:
 ```bash
 python co2-mqtt.py
 ```
 
-El script iniciará un hilo para leer el sensor cada 30 segundos y publicará un mensaje MQTT cada 2 minutos con el valor mediano de CO2 y una marca de tiempo.
+The script starts a background thread to read the sensor every 30 seconds and publishes an MQTT message every 2 minutes with the median CO2 value and a timestamp.
 
-### Salida de ejemplo
+### Example output
 ```
 Main thread running
 Published message: {"co2": 450, "timestamp": "13/03/2026, 12:00:00"} Topic homeassistant/co2
 ```
 
-## Estructura del proyecto
+## Project structure
 
-- `co2-mqtt.py`: Script principal.
-- `mh_z19.py`: Módulo para interactuar con el sensor MH-Z19.
-- `requirements.txt`: Dependencias de Python.
-- `.env.example`: Plantilla de configuración.
-- `.gitignore`: Archivos ignorados por Git.
+- `co2-mqtt.py`: Main script.
+- `mh_z19.py`: Module used to interact with the MH-Z19 sensor.
+- `requirements.txt`: Python dependencies.
+- `.env.example`: Configuration template.
+- `.gitignore`: Git ignore rules.
 
-## Notas adicionales
+## Additional notes
 
-- **Sensor**: Asegúrate de que el sensor MH-Z19 esté correctamente conectado y no sea accedido por otros procesos (usa `serial_console_untouched=True`).
-- **MQTT**: Si usas TLS, descomenta la línea correspondiente en el código.
-- **Errores**: Si el sensor falla, el script usa el último valor válido.
-- **Licencia**: [MIT](LICENSE) (agrega un archivo LICENSE si no lo tienes).
+- **Sensor**: Ensure the MH-Z19 sensor is properly connected and not used by other processes (`serial_console_untouched=True`).
+- **MQTT**: If you use TLS, uncomment the corresponding line in the code.
+- **Error handling**: If sensor reading fails, the script reuses the last valid value.
+- **License**: [MIT](LICENSE).
 
-## Contribución
+## Contributing
 
-Si encuentras problemas o quieres mejorar el código, abre un issue o envía un pull request.
+If you find issues or want to improve the project, open an issue or submit a pull request.
